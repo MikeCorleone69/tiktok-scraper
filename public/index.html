@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>TikTok Scraper (Shared)</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+      }
+      input[type="text"] {
+        width: 200px;
+        padding: 5px;
+      }
+      button {
+        padding: 6px 10px;
+        cursor: pointer;
+      }
+      table {
+        border-collapse: collapse;
+        margin-top: 20px;
+        width: 100%;
+        max-width: 800px;
+      }
+      th, td {
+        border: 1px solid #ccc;
+        padding: 8px;
+        text-align: left;
+      }
+      .duplicate {
+        background-color: #ffd2d2; /* Mark duplicates with light red */
+      }
+    </style>
+  </head>
+  <body>
+    <h1>TikTok Scraper (Shared Data)</h1>
+
+    <div>
+      <label for="usernameInput">TikTok Username:</label>
+      <input type="text" id="usernameInput" placeholder="e.g. charlidamelio" />
+      <button onclick="addUsername()">Add</button>
+    </div>
+
+    <table id="resultsTable">
+      <thead>
+        <tr>
+          <th>Username</th>
+          <th>Link</th>
+          <th>Followers</th>
+          <th>Likes</th>
+          <th>Duplicate?</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- Rows will be inserted here -->
+      </tbody>
+    </table>
+
+    <script>
+      let creators = [];
+
+      // On page load, fetch the current creators from the server
+      window.addEventListener('DOMContentLoaded', () => {
+        loadCreators();
+      });
+
+      async function loadCreators() {
+        try {
+          const res = await fetch('/api/creators');
+          creators = await res.json();
+          renderTable();
+        } catch (err) {
+          console.error('Error loading creators:', err);
+        }
+      }
+
+      async function addUsername() {
+        const usernameInput = document.getElementById('usernameInput');
+        const username = usernameInput.value.trim();
+        if (!username) return;
+
+        try {
+          // POST to /api/creators
+          const res = await fetch('/api/creators', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ username })
+          });
+
+          const newCreator = await res.json();
+          if (newCreator.error) {
+            console.error('Server error:', newCreator.error);
+            return;
+          }
+
+          // Add the new item to our local array
+          creators.push(newCreator);
+          renderTable();
+        } catch (err) {
+          console.error('Error adding username:', err);
+        }
+
+        usernameInput.value = '';
+      }
+
+      function renderTable() {
+        const tbody = document.querySelector('#resultsTable tbody');
+        tbody.innerHTML = ''; // Clear old rows
+
+        creators.forEach((creator) => {
+          const row = document.createElement('tr');
+
+          if (creator.isDuplicate) {
+            row.classList.add('duplicate');
+          }
+
+          // Username
+          const usernameCell = document.createElement('td');
+          usernameCell.textContent = creator.username;
+          row.appendChild(usernameCell);
+
+          // Link
+          const linkCell = document.createElement('td');
+          const linkAnchor = document.createElement('a');
+          linkAnchor.href = creator.link;
+          linkAnchor.target = '_blank';
+          linkAnchor.textContent = creator.link;
+          linkCell.appendChild(linkAnchor);
+          row.appendChild(linkCell);
+
+          // Followers
+          const followersCell = document.createElement('td');
+          followersCell.textContent = creator.followers;
+          row.appendChild(followersCell);
+
+          // Likes
+          const likesCell = document.createElement('td');
+          likesCell.textContent = creator.likes;
+          row.appendChild(likesCell);
+
+          // Duplicate?
+          const duplicateCell = document.createElement('td');
+          duplicateCell.textContent = creator.isDuplicate ? 'Yes' : 'No';
+          row.appendChild(duplicateCell);
+
+          tbody.appendChild(row);
+        });
+      }
+    </script>
+  </body>
+</html>
